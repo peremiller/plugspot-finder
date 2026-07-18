@@ -58,7 +58,7 @@ test("renders public page routes with PlugSpot-branded titles", async () => {
   }
 });
 
-test("reports optional OpenAI configuration without exposing a secret", async () => {
+test("reports the disabled Workspace Copilot without exposing a secret", async () => {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `ai-${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
@@ -71,13 +71,10 @@ test("reports optional OpenAI configuration without exposing a secret", async ()
     { waitUntil() {}, passThroughOnException() {} },
   );
 
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 410);
   const body = await response.json();
   assert.equal(body.configured, false);
-  assert.deepEqual(body.capabilities, [
-    "workspace-planning",
-    "photo-verification",
-    "report-moderation",
-  ]);
+  assert.equal(body.disabled, true);
+  assert.deepEqual(body.capabilities, []);
   assert.equal("apiKey" in body, false);
 });

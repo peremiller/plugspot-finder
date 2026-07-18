@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import AdvancedMap from "./advanced-map";
-import AiAssistant from "./ai-assistant";
 import LiveRoute from "./live-route";
 import PlugSpotLogo from "./plugspot-logo";
 import RealisticLoader from "./realistic-loader";
@@ -58,13 +57,14 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
   const [showLogin,setShowLogin]=useState(initialPath==="/signin"),[showReport,setShowReport]=useState(initialPath.startsWith("/report/")),[showOwner,setShowOwner]=useState(initialPath.startsWith("/claim/")),[showRoute,setShowRoute]=useState(initialPath.startsWith("/route/"));
   const [showCommunity,setShowCommunity]=useState(initialPath==="/community"),[detailPanel,setDetailPanel]=useState<DetailPanel>(urlDetail);
   const [routeTarget,setRouteTarget]=useState<Spot|null>(initialPath.startsWith("/route/")?initialSpot:null);
-  const [aiOpen,setAiOpen]=useState(initialPath==="/ai"),[sceneMode,setSceneMode]=useState<"world"|"street"|"interior">("world");
+  const [sceneMode,setSceneMode]=useState<"world"|"street"|"interior">("world");
+  const [showIntro,setShowIntro]=useState(false);
   const [reportChecking,setReportChecking]=useState(false);
   const [toast,setToast]=useState(""),[alerts,setAlerts]=useState<number[]>(()=>{if(typeof window==="undefined")return[];try{return JSON.parse(localStorage.getItem("plugspot:alerts")||"[]");}catch{return[];}}),[reportCount,setReportCount]=useState(()=>typeof window==="undefined"?0:Number(localStorage.getItem("plugspot:reports")||0));
   const [userLocation,setUserLocation]=useState<{lat:number;lng:number}|null>(null),[locationLabel,setLocationLabel]=useState("Set your location");
   const modalRef=useRef<HTMLElement>(null);
   const {ambienceOn,toggleAmbience,cue}=useSoundscape();
-  const modalOpen=showLogin||showReport||showOwner||showRoute||showCommunity||aiOpen;
+  const modalOpen=showLogin||showReport||showOwner||showRoute||showCommunity;
 
   useEffect(()=>{localStorage.setItem("plugspot:saved",JSON.stringify(saved));},[saved]);
   useEffect(()=>{localStorage.setItem("plugspot:alerts",JSON.stringify(alerts));},[alerts]);
@@ -107,12 +107,12 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
 
   useEffect(()=>{
     const slug=urlSlug(active.name);
-    const path=showRoute&&routeTarget?`/route/${urlSlug(routeTarget.name)}`:aiOpen?"/ai":showCommunity?"/community":showReport?`/report/${slug}`:showOwner?`/claim/${slug}`:showLogin?"/signin":showSaved?"/saved":view==="list"?"/places":`/place/${slug}`;
+    const path=showRoute&&routeTarget?`/route/${urlSlug(routeTarget.name)}`:showCommunity?"/community":showReport?`/report/${slug}`:showOwner?`/claim/${slug}`:showLogin?"/signin":showSaved?"/saved":view==="list"?"/places":`/place/${slug}`;
     const query=detailPanel?`?details=${detailPanel}`:"";
     window.history.replaceState({plugspot:true},"",`${path}${query}`);
-    const context=showRoute&&routeTarget?`Route to ${routeTarget.name}`:aiOpen?"AI Workspace Planner":showCommunity?"Community Pulse":showReport?"Report a PlugSpot":showOwner?`Claim ${active.name}`:showLogin?"Sign in":showSaved?"Saved Places":view==="list"?"All Places":`${active.name}, ${active.area}`;
+    const context=showRoute&&routeTarget?`Route to ${routeTarget.name}`:showCommunity?"Community Pulse":showReport?"Report a PlugSpot":showOwner?`Claim ${active.name}`:showLogin?"Sign in":showSaved?"Saved Places":view==="list"?"All Places":`${active.name}, ${active.area}`;
     document.title=`PlugSpot — ${context}`;
-  },[view,active.name,active.area,showSaved,detailPanel,showRoute,showCommunity,showReport,showOwner,showLogin,routeTarget,aiOpen]);
+  },[view,active.name,active.area,showSaved,detailPanel,showRoute,showCommunity,showReport,showOwner,showLogin,routeTarget]);
 
   const setLocation=useCallback((p:{lat:number;lng:number},label?:string)=>{const nearest=[...spots].filter(s=>s.open).sort((a,b)=>kmBetween(p,a)-kmBetween(p,b))[0];setSelected(nearest.id);setUserLocation(p);const closest=locations.map(l=>({...l,d:kmBetween(p,l)})).sort((a,b)=>a.d-b.d)[0];setLocationLabel(label||(closest.d<8?`Near ${closest.label}`:"Pinned location"));setSearched("Metro Manila");},[]);
   function search(){const exact=locations.find(l=>l.label.toLowerCase().includes(query.toLowerCase()));if(exact&&query.trim()){setLocation(exact,exact.label);setQuery(exact.label);}else setSearched(query.trim()||"Metro Manila");setSuggestions(false);}
@@ -140,13 +140,14 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
     const next=reportCount+1;setReportCount(next);localStorage.setItem("plugspot:reports",String(next));setShowReport(false);setToast("Report received — thank you. It is queued for community verification.");
   }
 
-  return <><RealisticLoader onComplete={()=>cue("connected")}/><main className={dark?"app dark":"app"}>
+  return <>{showIntro&&<RealisticLoader onComplete={()=>{setShowIntro(false);cue("connected");}}/>}<main className={dark?"app dark":"app"}>
     <header className="topbar">
       <a className="brand" href="#top" aria-label="Reset PlugSpot home" onClick={e=>{e.preventDefault();resetExplore();}}><PlugSpotLogo/></a>
       <button className="header-location" onClick={locate}><span>⌖</span><b>{userLocation?locationLabel:"Metro Manila, Philippines"}</b><small>Set location</small></button>
       <span className="header-date">▣ {new Date().toLocaleDateString("en-PH",{month:"long",day:"numeric",year:"numeric",weekday:"short",timeZone:"Asia/Manila"})}</span>
       <button className="community" onClick={()=>setShowCommunity(true)} aria-label="Open live community activity"><span className="faces">👩🏻‍💻 👨🏽‍💻 👩🏾‍💻</span><span><b>12,540+</b> community reports <i>Live pulse →</i></span></button>
       {user&&<button className="saved-nav" onClick={()=>{setShowSaved(!showSaved);setView("list");}}>♥ {saved.length} saved</button>}
+      <button className="intro-replay" onClick={()=>setShowIntro(true)} aria-label="Play the anime PlugSpot intro"><span>▶</span> Anime intro</button>
       <button className={ambienceOn?"ambience active":"ambience"} onClick={toggleAmbience} aria-pressed={ambienceOn} aria-label={`${ambienceOn?"Mute":"Enable"} ambience`}><span>{ambienceOn?"◖))":"◖×"}</span> Ambience <b>{ambienceOn?"On":"Muted"}</b></button>
       {user?<div className="account"><span>{user.displayName.slice(0,1).toUpperCase()}</span><div><small>Welcome back</small><b>{user.displayName}</b></div><Link href="/signout-with-chatgpt?return_to=%2F">Sign out</Link></div>:<button className="signin" onClick={()=>setShowLogin(true)}>Sign in</button>}
       <button className="theme" onClick={()=>setDark(!dark)} aria-label="Toggle color theme">{dark?"☀":"☾"}</button>
@@ -161,7 +162,6 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
         <p>Step from the city into a real workspace—then check the exact seat, socket, Wi-Fi and route.</p>
         <div className="world-searchbox"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){search();cue("tap");document.querySelector("#explore")?.scrollIntoView({behavior:"smooth"});}}} placeholder="Search a location" aria-label="Search a location"/><button onClick={locate} aria-label="Use current location">◎</button></div>
         <button className="world-primary" onClick={()=>{search();cue("tap");document.querySelector("#explore")?.scrollIntoView({behavior:"smooth"});}}>Find a workspace <span>→</span></button>
-        <AiAssistant places={spots.map(s=>({id:s.id,name:s.name,area:s.area,distanceKm:distanceKm(s),open:s.open,hours:s.hours,outlets:s.outlets,wifiMbps:s.download,noise:s.noise,workability:s.workability}))} activePlaceName={active.name} initialOpen={aiOpen} onOpenChange={setAiOpen} onSelect={id=>{setSelected(id);setView("map");}}/>
       </div>
       <div className="world-districts" aria-label="Quick locations"><button onClick={()=>setLocation(locations[1],locations[1].label)}>Makati ↗</button><button onClick={()=>setLocation(locations[0],locations[0].label)}>BGC ↗</button><button className="active" onClick={()=>setLocation(locations[2],locations[2].label)}>Alabang</button></div>
       <button className="world-origin" onClick={locate} aria-label="Set your position"><i/>You are here<span>{userLocation?locationLabel:"Use precise GPS"}</span></button>

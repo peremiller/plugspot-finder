@@ -26,8 +26,8 @@ export default function RealisticLoader({ onComplete }: { onComplete?: () => voi
   if (!visible) return null;
 
   return <section className={`real-loader ${phase}`} aria-label="PlugSpot is finding a nearby outlet" aria-live="polite">
-    <div className="loader-frame loader-face" role="img" aria-label="A person walking while holding a laptop plug and looking for a socket"/>
-    <div className="loader-frame loader-search" role="img" aria-label="The same person looking in several directions for an available socket"/>
+    <div className="loader-frame loader-face" role="img" aria-label="An anime character walking with a laptop plug while looking for a socket"/>
+    <div className="loader-frame loader-search" role="img" aria-label="The same anime character scanning several directions for an available socket"/>
     <div className="loader-shade"/>
     <header><PlugSpotLogo/><button onClick={finish}>Skip intro</button></header>
     <div className="loader-copy">
