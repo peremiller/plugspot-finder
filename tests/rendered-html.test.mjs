@@ -78,3 +78,23 @@ test("reports the disabled Workspace Copilot without exposing a secret", async (
   assert.deepEqual(body.capabilities, []);
   assert.equal("apiKey" in body, false);
 });
+
+test("labels workspace sample data and keyboard navigation without claiming a live community feed", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `provenance-${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const response = await worker.fetch(
+    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Preview data:/);
+  assert.match(html, /illustrative, not live verification/);
+  assert.match(html, /Skip to workspace results/);
+  assert.match(html, /Open community preview/);
+  assert.doesNotMatch(html, /12,540\+/);
+  assert.doesNotMatch(html, /LIVE COMMUNITY PULSE/);
+});
