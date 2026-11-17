@@ -7,6 +7,7 @@ import LiveRoute from "./live-route";
 import PlugSpotLogo from "./plugspot-logo";
 import RealisticLoader from "./realistic-loader";
 import { useSoundscape } from "./use-soundscape";
+import { readStoredIds, readStoredCount, writeStoredValue } from "../lib/safe-storage";
 
 export type SignedInUser = { displayName: string; email: string } | null;
 type TravelMode = "walk" | "drive" | "transit";
@@ -53,21 +54,21 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
   const [query,setQuery]=useState(""),[searched,setSearched]=useState("Metro Manila"),[suggestions,setSuggestions]=useState(false);
   const [filters,setFilters]=useState<string[]>(["Open now"]),[intents,setIntents]=useState<Intent[]>([]);
   const [sort,setSort]=useState<SortMode>("distance"),[mode,setMode]=useState<TravelMode>("drive");
-  const [dark,setDark]=useState(false),[saved,setSaved]=useState<number[]>(()=>{if(typeof window==="undefined")return[];try{return JSON.parse(localStorage.getItem("plugspot:saved")||"[]");}catch{return[];}}),[showSaved,setShowSaved]=useState(initialPath==="/saved");
+  const [dark,setDark]=useState(false),[saved,setSaved]=useState<number[]>(()=>readStoredIds("plugspot:saved")),[showSaved,setShowSaved]=useState(initialPath==="/saved");
   const [showLogin,setShowLogin]=useState(initialPath==="/signin"),[showReport,setShowReport]=useState(initialPath.startsWith("/report/")),[showOwner,setShowOwner]=useState(initialPath.startsWith("/claim/")),[showRoute,setShowRoute]=useState(initialPath.startsWith("/route/"));
   const [showCommunity,setShowCommunity]=useState(initialPath==="/community"),[detailPanel,setDetailPanel]=useState<DetailPanel>(urlDetail);
   const [routeTarget,setRouteTarget]=useState<Spot|null>(initialPath.startsWith("/route/")?initialSpot:null);
   const [sceneMode,setSceneMode]=useState<"world"|"street"|"interior">("world");
   const [showIntro,setShowIntro]=useState(false);
   const [reportChecking,setReportChecking]=useState(false);
-  const [toast,setToast]=useState(""),[alerts,setAlerts]=useState<number[]>(()=>{if(typeof window==="undefined")return[];try{return JSON.parse(localStorage.getItem("plugspot:alerts")||"[]");}catch{return[];}}),[reportCount,setReportCount]=useState(()=>typeof window==="undefined"?0:Number(localStorage.getItem("plugspot:reports")||0));
+  const [toast,setToast]=useState(""),[alerts,setAlerts]=useState<number[]>(()=>readStoredIds("plugspot:alerts")),[reportCount,setReportCount]=useState(()=>readStoredCount("plugspot:reports"));
   const [userLocation,setUserLocation]=useState<{lat:number;lng:number}|null>(null),[locationLabel,setLocationLabel]=useState("Set your location");
   const modalRef=useRef<HTMLElement>(null);
   const {ambienceOn,toggleAmbience,cue}=useSoundscape();
   const modalOpen=showLogin||showReport||showOwner||showRoute||showCommunity;
 
-  useEffect(()=>{localStorage.setItem("plugspot:saved",JSON.stringify(saved));},[saved]);
-  useEffect(()=>{localStorage.setItem("plugspot:alerts",JSON.stringify(alerts));},[alerts]);
+  useEffect(()=>{writeStoredValue("plugspot:saved",JSON.stringify(saved));},[saved]);
+  useEffect(()=>{writeStoredValue("plugspot:alerts",JSON.stringify(alerts));},[alerts]);
   useEffect(()=>{if(!toast)return;const id=setTimeout(()=>setToast(""),3200);return()=>clearTimeout(id);},[toast]);
   useEffect(()=>{
     if(!modalOpen)return;
@@ -137,7 +138,7 @@ export default function PlugSpotClient({user,initialPath="/"}:{user:SignedInUser
     }catch{
       // Community verification remains available when the optional AI check is offline.
     }finally{setReportChecking(false);}
-    const next=reportCount+1;setReportCount(next);localStorage.setItem("plugspot:reports",String(next));setShowReport(false);setToast("Report counted in this browser only; it was not submitted to community verification.");
+    const next=reportCount+1;setReportCount(next);writeStoredValue("plugspot:reports",String(next));setShowReport(false);setToast("Report counted in this browser only; it was not submitted to community verification.");
   }
 
   return <>{showIntro&&<RealisticLoader onComplete={()=>{setShowIntro(false);cue("connected");}}/>}<main className={dark?"app dark":"app"}>
